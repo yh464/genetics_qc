@@ -5,6 +5,7 @@ def main(args):
     import os
     
     # input processing
+    if args.out[-4:] != '%chr': args.out += '/chr%chr'
     outdir = os.path.dirname(args.out)
     outdir = os.path.realpath(outdir)
     if not os.path.isdir(outdir): os.mkdir(outdir)
@@ -12,24 +13,27 @@ def main(args):
     # array submitter
     from _utils import array_submitter
     submitter = array_submitter.array_submitter(
-        n_cpu = 16,
+        n_cpu = 32,
         partition = 'icelake-himem',
         name = 'bfile_extract',
-        timeout = 90)
+        timeout = 90,
+        #debug = True
+        )
     
-    for c in range(1,23):
+    for c in range(1,24):
         cmd = f'{args.plink} --bgen '
-        cmd += args.bgen.replace('%chr',str(c))
+        cmd += args.bgen.replace('%chr',str(c)).replace('chr23','chrX')
         cmd += ' ref-first'
-        cmd += ' --sample '
-        cmd += args.sample.replace('%chr',str(c))
+        sam = args.sample.replace('%chr',str(c)).replace('chr23','chrX')
+        if c == 23: sam = sam.replace('487334', '486676')
+        cmd += f' --sample {sam}'
         # cmd += ' --extract '
         # cmd += args.snp
         cmd += ' --exclude '
         cmd += args.exclude
         cmd += ' --keep '
         cmd += args.subj
-        cmd += ' --hwe 0.000001 --maf 0.001 --make-bed --rm-dup exclude-mismatch --threads 16 --out '
+        cmd += ' --hwe 0.000001 --maf 0.001 --make-bed --rm-dup exclude-mismatch --threads 8 --out '
         # Hardy-Weinberg 0.000001, MAF 0.001, exclude all mismatching duplicates
         prefix = args.out.replace('%chr',str(c))
         cmd += prefix
