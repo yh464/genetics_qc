@@ -11,11 +11,11 @@ def main(args):
     if not os.path.isdir(outdir): os.mkdir(outdir)
     
     # array submitter
-    from _utils import array_submitter
-    submitter = array_submitter.array_submitter(
+    from _utils.slurm import array_submitter
+    submitter = array_submitter(
         n_cpu = 32,
         partition = 'icelake-himem',
-        name = 'bfile_extract',
+        name = f'bfile_extract_{os.path.basename(args.subj)}'.replace('.txt',''),
         timeout = 90,
         #debug = True
         )
@@ -43,8 +43,8 @@ def main(args):
     submitter.submit()
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
-    parser = ArgumentParser(description = 'this script extracts plink binaries from a subj list')
+    from _utils.slurm import slurm_parser
+    parser = slurm_parser(description = 'this script extracts plink binaries from a subj list')
     parser.add_argument('--bgen', 
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Genetics/Genetic_data/Imputed/ukb_imp_chr%chr_v3.bgen',
         help = 'bgen file, use "%chr" to replace the chromosome number')

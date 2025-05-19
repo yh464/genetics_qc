@@ -1,6 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+def check_ancestry(reported, pc1, pc2, target):
+  for e in target:
+    if e == 'eur' and reported in ['1','1001','1002','1003'] and \
+      -39.574 < pc1 < 16.714 and -17.145 < pc2 < 23.645: return True
+    elif e == 'mix' and reported in ['2','2001','2002','2003','2004'] and \
+      -294.624 < pc1 < 487.466 and -316.213 < pc2 < 272.319: return True
+    elif e == 'oas' and reported in ['3','3001','3002','3003','3004'] and \
+      -36.806 < pc1 < 191.373 and -304.746 < pc2 < 74.524: return True
+    elif e == 'afr' and reported in ['4','4001','4002','4003'] and \
+      79.454 < pc1 < 649.381 and -47.610 < pc2 < 180.314: return True
+    elif e == 'eas' and reported == '5' and \
+      95.421 < pc1 < 215.474 and -377.089 < pc2 < -159.840: return True
+  return False
+
 def main(args):
   from time import perf_counter as t
   from fnmatch import fnmatch
@@ -75,7 +89,6 @@ def main(args):
   
   sex = 0
   eth = 0
-  pc = 0
   het = 0
   while True:
     line = fin.readline()
@@ -102,12 +115,9 @@ def main(args):
     
     if line[qc_col_ids[3]] == 'NA': continue
     pc1 = float(line[qc_col_ids[3]])
-    if pc1 < -39.574 or pc1 > 16.714: pc += 1; continue # first genetic PC, 5SD is manually calculated
-    
     if line[qc_col_ids[4]] == 'NA': continue
     pc2 = float(line[qc_col_ids[4]])
-    if pc2 < -17.145 or pc2 > 23.645: pc += 1; continue # second genetic PC, 5SD manually calculated
-    if not line[qc_col_ids[1]] in ['1','1001','1002','1003','1004']: eth += 1; continue # European ancestry
+    if not check_ancestry(line[qc_col_ids[1]], pc1, pc2, args.ethnicity): eth += 1; continue
     # if QC is passed, then write out to output file
     line_out = [line[i] for i in valid_col_ids]
     print('\t'.join(line_out), file = fout)
@@ -120,7 +130,6 @@ def main(args):
   
   print(f'{sex} subjects excluded due to reported sex != genetic sex')
   print(f'{eth} subjects excluded based on ethnicity')
-  print(f'{pc} subjects excluded based on genetic PCs')
   print(f'{het} subjects excluded due to excessive heterozygosity')
   return
 
@@ -132,6 +141,8 @@ if __name__ == '__main__':
     default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Users/yh464/params/subjlist_full.txt')
   parser.add_argument('-p','--pheno', dest = 'pheno', nargs = '*', help = 'phenotypes list',
     default = [])
+  parser.add_argument('-e', '--ethnicity', choices = ['eur','mix','afr','oas','eas'], default = ['eur'],nargs='*')
+  parser.add_argument('--noqc', action = 'store_true', default = False, help = 'No QC at subject level')
   parser.add_argument('-i','--in', dest = '_in', help = 'input ukb fetch file, TAB format, NOT csv',
     default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Phenotype/DataFetch_20022024/ukb677594.tab')
   parser.add_argument('-o','--out', dest = 'out', help = 'output prefix', required = True)
