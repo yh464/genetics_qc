@@ -109,15 +109,16 @@ def main(args):
     if subj != 'all' and not line[0] in subj: continue # skip unwanted subjects
     if subj != 'all': subj.remove(line[0])
     
-    # first QC subjects
-    if not line[qc_col_ids[0]] == line[qc_col_ids[2]]: sex += 1; continue # genetic sex ~ self-reported
-    if not fnmatch(line[qc_col_ids[5]],'[Nn][Aa]'): het += 1; continue # heterozygosity, must be NA
-    
-    if line[qc_col_ids[3]] == 'NA': continue
-    pc1 = float(line[qc_col_ids[3]])
-    if line[qc_col_ids[4]] == 'NA': continue
-    pc2 = float(line[qc_col_ids[4]])
-    if not check_ancestry(line[qc_col_ids[1]], pc1, pc2, args.ethnicity): eth += 1; continue
+    if not args.noqc:
+      # first QC subjects
+      if not line[qc_col_ids[0]] == line[qc_col_ids[2]]: sex += 1; continue # genetic sex ~ self-reported
+      if not fnmatch(line[qc_col_ids[5]],'[Nn][Aa]'): het += 1; continue # heterozygosity, must be NA
+      
+      if line[qc_col_ids[3]] == 'NA': continue
+      pc1 = float(line[qc_col_ids[3]])
+      if line[qc_col_ids[4]] == 'NA': continue
+      pc2 = float(line[qc_col_ids[4]])
+      if not check_ancestry(line[qc_col_ids[1]], pc1, pc2, args.ethnicity): eth += 1; continue
     # if QC is passed, then write out to output file
     line_out = [line[i] for i in valid_col_ids]
     print('\t'.join(line_out), file = fout)
