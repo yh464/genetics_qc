@@ -14,32 +14,32 @@ def main(args):
     from _utils.slurm import array_submitter
     submitter = array_submitter(
         n_cpu = 32,
-        partition = 'icelake-himem',
         name = f'bfile_extract_{os.path.basename(args.subj)}'.replace('.txt',''),
         timeout = 90,
-        #debug = True
         )
-    
+
     for c in range(1,24):
-        cmd = f'{args.plink} --bgen '
-        cmd += args.bgen.replace('%chr',str(c)).replace('chr23','chrX')
-        cmd += ' ref-first'
+        cmd = [args.plink, '--bgen']
+        cmd.append(args.bgen.replace('%chr',str(c)).replace('chr23','chrX'))
+        cmd.append('ref-first')
         sam = args.sample.replace('%chr',str(c)).replace('chr23','chrX')
         if c == 23: sam = sam.replace('487334', '486676')
-        cmd += f' --sample {sam}'
-        # cmd += ' --extract '
-        # cmd += args.snp
-        cmd += ' --exclude '
-        cmd += args.exclude
-        cmd += ' --keep '
-        cmd += args.subj
-        cmd += ' --hwe 0.000001 --maf 0.001 --make-bed --rm-dup exclude-mismatch --threads 8 --out '
+        cmd += ['--sample',sam, '--exclude', args.exclude, '--keep']
+        if c == 23:
+            # X chromosome imputed genotype file contains fewer samples
+            import pandas as pd
+            x_df = pd.read_table(sam, sep = '\\s+', usecols = [0,1]); x_df.columns = ['FID','IID']
+            sam_df = pd.read_table(args.subj, sep = '\\s+').merge(x_df)
+            sam_x = args.subj.replace('.txt','_X.txt')
+            sam_df.to_csv(sam_x, sep = '\t', index = False)
+            cmd.append(sam_x)
+        else: cmd.append(args.subj)
         # Hardy-Weinberg 0.000001, MAF 0.001, exclude all mismatching duplicates
-        prefix = args.out.replace('%chr',str(c))
-        cmd += prefix
+        cmd += ['--hwe 0.000001','--maf 0.001','--make-bed','--rm-dup exclude-mismatch','--threads 8','--out']
+        prefix = args.out.replace('%chr',str(c)); cmd.append(prefix)
         if not os.path.isfile(prefix+'.bed') or not os.path.isfile(prefix+'.bim') \
             or not os.path.isfile(prefix + '.fam') or args.force:
-            submitter.add(cmd)
+            submitter.add(' '.join(cmd))
     submitter.submit()
 
 if __name__ == '__main__':
@@ -47,10 +47,10 @@ if __name__ == '__main__':
     parser = slurm_parser(description = 'this script extracts plink binaries from a subj list')
     parser.add_argument('--bgen', 
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Genetics/Genetic_data/Imputed/ukb_imp_chr%chr_v3.bgen',
-        help = 'bgen file, use "%chr" to replace the chromosome number')
+        help = 'bgen file, use "(percent)chr" to replace the chromosome number')
     parser.add_argument('--sample',
         default = '/rds/project/rb643/rds-rb643-ukbiobank2/Data_Genetics/Genetic_data/Imputed/ukb20904_imp_chr%chr_v3_s487334.sample',
-        help = 'input sample file, use "%chr" to replace the chromosome number')
+        help = 'input sample file, use "(percent)chr" to replace the chromosome number')
     parser.add_argument('--subj',
         default = '../params/ukbkeepfile_202402.txt',
         help = 'subjects list to keep')
