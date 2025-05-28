@@ -38,9 +38,13 @@ main = function(args){
   pruned = unlist(snpset, use.names = F)
   
   #### Kinship Matrix ####
-  kin = snpgdsIBDKING(gds, num.thread = 8)
-  eid = kin$sample.id
-  kinmat = kin$kinship; colnames(kinmat) = eid; rownames(kinmat) = eid
+  kinfile = paste0(args$bfile,'.king.rdata')
+  if (! file.exists(kinfile) | args$force){
+    kin = snpgdsIBDKING(gds, num.thread = 8)
+    eid = kin$sample.id
+    kinmat = kin$kinship; colnames(kinmat) = eid; rownames(kinmat) = eid
+    save(kinmat, file = kinfile)
+  } else load(kinfile)
   snpgdsClose(gds)
   
   #### PC-AiR ####
@@ -60,7 +64,8 @@ main = function(args){
   pcrelatefile = paste0(args$bfile,'.pcrelate.rdata')
   if (! file.exists(pcrelatefile) | args$force){
     pcrelateres = pcrelate(genoiter, pcs = pcairres$vectors[,1:2], 
-                           BPPARAM = BiocParallel::MulticoreParam(workers = 8))
+                           sample.block.size = 10000,
+                           BPPARAM = BiocParallel::MulticoreParam(workers = 4))
     pcrelategrm = pcrelateToMatrix(pcrelateres)
     save(pcrelateres, pcrelategrm, file = pcrelatefile)
   }

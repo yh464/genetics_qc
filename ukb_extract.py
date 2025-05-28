@@ -87,6 +87,7 @@ def main(args):
   print(f'header contains {n_cols} columns')
   print(f'header contains {n_cols} columns', file = flog)
   
+  count = 0
   sex = 0
   eth = 0
   het = 0
@@ -122,6 +123,7 @@ def main(args):
     # if QC is passed, then write out to output file
     line_out = [line[i] for i in valid_col_ids]
     print('\t'.join(line_out), file = fout)
+    count += 1
   
   if subj != 'all' and len(subj) > 0:
     print('following subjects are not found in this UKB fetch:', file = flog)
@@ -132,6 +134,8 @@ def main(args):
   print(f'{sex} subjects excluded due to reported sex != genetic sex')
   print(f'{eth} subjects excluded based on ethnicity')
   print(f'{het} subjects excluded due to excessive heterozygosity')
+  print(f'Resultant sample size is {count} subjects')
+  fout.close()
   return
 
 if __name__ == '__main__':
