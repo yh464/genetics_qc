@@ -58,7 +58,7 @@ def main(args):
   for i in range(len(hdr)):
     tmp = hdr[i]
     for j in range(len(pheno)):
-      if fnmatch(tmp,'f.'+pheno[j]+'*'):
+      if fnmatch(tmp,'f.'+pheno[j]+'.*'):
         valid_cols.append(tmp)
         valid_col_ids.append(i)
         valid_col_match.append(j)
