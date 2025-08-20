@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 '''
 This script gets rsid from chromosome, base pair, and two alleles
 Input:
@@ -53,6 +52,7 @@ def preprocess_indels(df):
     elif a2.endswith(a1): a2 = a2.removesuffix(a1); a1 = '-'
     new_a1s.append(a1); new_a2s.append(a2)
   df.loc[indel, 'A1'] = new_a1s; df.loc[indel, 'A2'] = new_a2s
+  return df
 
 def merge_ids(df, ref, pos_cols = ['POS'], ref_cols = ['POS']):
   '''df should be normalised to have columns CHR, ID, A1, A2 and pos_cols
@@ -65,7 +65,7 @@ def merge_ids(df, ref, pos_cols = ['POS'], ref_cols = ['POS']):
     else: ref, ref_cols = load_ref_ucsc(ref); prep_indel = True
 
   # retain a copy of the original data frame
-  orig = df.copy()
+  orig = df.copy(); df = df.copy()
   nsnp = df.shape[0]
 
   # UCSC format removes overlapping SNPs from alleles: e.g. A/AG -> -/G
@@ -81,31 +81,29 @@ def merge_ids(df, ref, pos_cols = ['POS'], ref_cols = ['POS']):
   out = orig
   opt_pos_col = ''; opt_ref_col = ''
   for col in pos_cols:
-    if out_size > 0.9 * nsnp: break
     for ref_col in ref_cols:
       tmp = pd.merge(df, ref, left_on = ['CHR',col,'A1','A2'], right_on = ['CHR',ref_col,'A1','A2'])
       if tmp.shape[0] > out_size: out = tmp; out_size = tmp.shape[0]; opt_pos_col = col; opt_ref_col = ref_col
-      if out_size > 0.9 * nsnp: break
   del ref
 
-  if out_size < 0.9 * nsnp:
+  if out_size < 0.7 * nsnp:
     Warning(f'Only {out_size}/{nsnp} variants mapped, check genome build!\nReturning original IDs')
     out = orig; out['SNP'] = orig['ID']; return out, orig, None, None
   else:
     out = out[['CHR','ID','SNP']]
-    out = pd.merge(orig, out, how = 'left') # report SNPs that are not matched
+    out = pd.merge(orig, out, how = 'left').sort_values(['ID','SNP']).drop_duplicates('ID') # report SNPs that are not matched
+    out = out.sort_values(['CHR'] + pos_cols)
     missnp = out.loc[out.SNP.isna(),['CHR','ID','A1','A2'] + pos_cols] # snps that are not mapped
     out['SNP'] = out['SNP'].fillna(out['ID'])
     return out[['CHR','ID','A1','A2'] + pos_cols + ['SNP']], missnp, opt_pos_col, opt_ref_col
   
 def main(args):
   import pandas as pd
+  import numpy as np
   df = pd.read_table(args._in)
 
   # normalise column names
-  df['ID'] = df[args.snp]
-  df['CHR'] = df[args.chrom]
-  df['A1'] = df[args.a1]; df['A2'] = df[args.a2]
+  df = df.rename(columns = {args.snp:'ID', args.chrom:'CHR', args.a1:'A1',args.a2:'A2'})
   df = df[['ID','CHR','A1','A2'] + args.pos]
   df = num_chrom(df)
 
@@ -118,22 +116,21 @@ def main(args):
   out_match = []; out_mis = []; pos_cols = []; ref_cols = [] # and store in a list to test uniformity
 
   for chrom in df.CHR.unique():
-    pos_col = args.pos; ref_col = ['STOP','START']
-    if opt_pos_col != None: pos_col.remove(opt_pos_col); pos_col.insert(0, opt_pos_col)
-    if opt_ref_col != None: ref_col.remove(opt_ref_col); ref_col.insert(0, opt_ref_col)
+    # pos_col = args.pos; ref_col = ['STOP','START']
+    # if opt_pos_col != None: pos_col.remove(opt_pos_col); pos_col.insert(0, opt_pos_col)
+    # if opt_ref_col != None: ref_col.remove(opt_ref_col); ref_col.insert(0, opt_ref_col)
 
     df_chrom = df.loc[df.CHR == chrom,:]
-    mat, mis, opt_pos_col, opt_ref_col = merge_ids(df_chrom, ref[chrom-1], pos_col, ref_col)
+    mat, mis, opt_pos_col, opt_ref_col = merge_ids(df_chrom, ref[int(chrom)-1], args.pos)
     out_match.append(mat); out_mis.append(mis); pos_cols.append(opt_pos_col); ref_cols.append(opt_ref_col)
   
   out_match = pd.concat(out_match); out_mis = pd.concat(out_mis)
-  pos_cols = set(pos_cols); ref_cols = set(ref_cols)
-  if len(pos_cols) > 1: Warning('Coordinates do not agree between chromosomes: ' + ' '.join(list(pos_cols)))
-  if len(ref_cols) > 1: Warning('Different chromosomes align to different ref coordinates: ' + ' '.join(list(ref_cols)))
-  print(f'Column {pos_cols[0]} of input file aligns to {ref_cols[0]} of the reference file')
-
   out_match.to_csv(f'{args.out}.txt', sep = '\t', index = False)
   out_mis.to_csv(f'{args.out}.mis.txt', sep = '\t', index = False)
+  pos_cols = np.unique(pos_cols); ref_cols = np.unique(ref_cols)
+  if len(pos_cols) > 1: Warning('Coordinates do not agree between chromosomes: ' + ' '.join(pos_cols))
+  if len(ref_cols) > 1: Warning('Different chromosomes align to different ref coordinates: ' + ' '.join(ref_cols))
+  print(f'Column {pos_cols[0]} of input file aligns to {ref_cols[0]} of the reference file')
 
 if __name__ == '__main__':
   import argparse
@@ -147,6 +144,7 @@ if __name__ == '__main__':
   parser.add_argument('-b','--build', choices = ['hg19','hg38'], default = 'hg38', help = 'Genome build')
   parser.add_argument('-r','--ref', help = 'Reference file, use %chr% as placeholder for chrom, %build% for build',
     default = '/rds/project/rds-Nl99R8pHODQ/ref/dbsnp/snp151_%build%_chr%chr%.txt.gz')
+  # default = '/rds/project/rds-Nl99R8pHODQ/ref/dbsnp/snp157_%build%_chr%chr%.vcf.gz')
   parser.add_argument('-o', '--out', help = 'output prefix', required = True)
   args = parser.parse_args()
 
