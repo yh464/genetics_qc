@@ -13,9 +13,7 @@ import scanpy as sc
 import scdrs
 
 if not os.path.isfile(args.out) or args.force:
-  adata = sc.read_h5ad(args._in)
-  sc.pp.normalize_total(adata, target_sum = 1e6)
-  sc.pp.log1p(adata)
+  adata = scdrs.util.load_h5ad(args._in)
   sc.pp.neighbors(adata, n_neighbors = 15, n_pcs = 20)
   scdrs.preprocess(adata)
   sc.write(args.out, adata)
