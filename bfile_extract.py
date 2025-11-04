@@ -58,7 +58,7 @@ if __name__ == '__main__':
     #     default = '../params/bgen_extract_snps.txt',
     #     help = 'snps to keep, quality controlled')
     parser.add_argument('--exclude',
-        default = '../genqc/exclude_list.txt',
+        default = '../genqc/exclude_list.txt', # missingness rate < 0.05, info r2 0.4
         help = 'snps to exclude (fails quality control)')
     parser.add_argument('--plink', help = 'plink2 executable',
         default = '../toolbox/plink2')

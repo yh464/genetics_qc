@@ -158,12 +158,7 @@ if __name__ == '__main__':
   if args.subj != 'all': args.subj = os.path.realpath(args.subj)
   if len(args.pheno) > 0 and os.path.isfile(args.pheno[0]): args.pheno = os.path.realpath(args.pheno[0])
 
-  from _utils import cmdhistory, path
+  from _utils import cmdhistory
   cmdhistory.log()
-  proj = path.project()
-  proj.add_input(args.subj, __file__)
-  proj.add_input(args.pheno, __file__)
-  proj.add_input(args._in, __file__)
-  proj.add_output(args.out, __file__)
   try: main(args)
   except: cmdhistory.errlog()
