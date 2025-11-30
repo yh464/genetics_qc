@@ -16,4 +16,6 @@ if not os.path.isfile(args.out) or args.force:
   adata = scdrs.util.load_h5ad(args._in)
   sc.pp.neighbors(adata, n_neighbors = 15, n_pcs = 20)
   scdrs.preprocess(adata)
+  if not 'X_umap' in adata.obsm:
+      sc.tl.umap(adata)
   sc.write(args.out, adata)

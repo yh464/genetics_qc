@@ -5,7 +5,7 @@ dataset=${dataset/.h5ad/}
 workdir=/rds/project/rds-Nl99R8pHODQ/multiomics/gsmap
 if [ ! -f $workdir/$dataset/find_latent_representations/${dataset}_add_latent.h5ad ]; then
   gsmap run_find_latent_representations --workdir /rds/project/rds-Nl99R8pHODQ/multiomics/gsmap --sample_name $dataset \
-    --input_hdf5_path /rds/project/rds-Nl99R8pHODQ/multiomics/raw/qian_2025/${dataset}.h5ad --annotation annotation --data_layer count
+    --input_hdf5_path /rds/project/rds-Nl99R8pHODQ/multiomics/spatial/${dataset/_//}.h5ad --annotation annotation --data_layer count
 fi
 if [ ! -f $workdir/$dataset/latent_to_gene/${dataset}_gene_marker_score.feather ]; then
   gsmap run_latent_to_gene --workdir /rds/project/rds-Nl99R8pHODQ/multiomics/gsmap --sample_name $dataset \
